@@ -1,2 +1,11 @@
-This Repository will contain specifications, source, POC scripts and any other materials related to SLE Networking, Network Functions Virtualization and Software Defined Networking.
+# SLE Networking and NFV/SDN
+
+Everything related to Networking at SUSE
+
+## Contents:
+- General documents related to Networking, SDN, NFV
+- Integration manuals for SDN/NFV solutions with SUSE OpenStack Cloud or others
+- Presentations
+- Relevant Scripts for integration 
+- Any other relevant items for the above topics
 
