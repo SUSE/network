@@ -142,11 +142,32 @@ The End Point Group (EPG) along with the Bridge Domain (BD) together represent a
 
 ![EPG and BD with SOC7](images/cisco_aci/aci_soc7_epgs_bd.png)
 
-* External Routed Networks with SOC 7 ACI integration
+### External Routed Networks with SOC 7 ACI integration
 
 The test solution uses the default L3 Out using the ACI’s internal fabric VRFs linked to the physical interface. The setting in /etc/neutron/neutron.conf for service_plugins lists apic_gbp_l3 (for GBP mode) or cisco_apic_l3 (for ML2 mode) uses the default L3 Out mechanism. The physical interface linked to the ML2 L3 out in the test solution can be seen in the below image:
 
 ![External Routed Network](images/cisco_aci/aci_ml2_l3out.png)
+
+#### Setup a Route Reflector
+
+We need to have a BGP route reflector policy to allow that static route for the L3out to be advertised to other no border leaf nodes in the fabric. The BGP route-reflector policy is used for advertising dynamic routes and static routes to the non-border leaves in the fabric. If you are using any kind of L3out the best practice is to configured the  RR policy using below command on the controller:
+
+```
+apic route-reflector-create --apic-ip <APIC IP> --apic-username admin --apic-password <password> --no-secure
+```
+
+#### Configure External Connectivity
+
+Please make sure you have pre-existing L3 out (for example Datacenter-Out) and pre-existing external EPG (say Datacenter-Out-Epg) for it, then on controllers ensure that the plugin configuration includes this info:
+
+```
+ [apic_external_network:Datacenter-Out]
+ preexisting=True
+ external_epg=Datacenter-Out-Epg
+ host_pool_cidr = 2.101.2.1/24
+```
+
+In above example Datacenter-Out is name of l3-out on ACI and Datacenter-Out-Epg is the name of EPG. The SNAT pool is secified by `host_pool_cidr`.
 
 
 ## Switch Configurations on the Control and Compute nodes
