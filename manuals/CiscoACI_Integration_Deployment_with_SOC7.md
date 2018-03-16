@@ -18,7 +18,7 @@ SOC 7 uses the network architecture as shown in the figure below as the default 
 
 ![SOC 7 Network Architecture](images/cisco_aci/cloud_network_overview.png "SOC 7 Network Overview")
 
-The network design can be changed before the starting the SOC Crowbar installation on the admin server.
+The network design can be changed before starting the SOC Crowbar installation on the admin server.
 
 More details regarding modifying the network configuration for the cloud can be found [here](https://www.suse.com/documentation/suse-openstack-cloud-7/book_cloud_deploy/data/sec_depl_adm_inst_crowbar_network.html)
 
@@ -37,20 +37,7 @@ All the information provided in this document is based on the configuration done
 ![SOC7-ACI Integration Lab Setup](images/cisco_aci/aci_pod_lab_network_diagram.png "ACI Lab POD Network Diagram")
 
 
-## Admin Node Preparations
-The SUSE OpenStack cloud Admin node should be prepared before starting out with crowbar and ACI integration. The packages required for ACI integration are not currently part of the SUSE OpenStack Cloud 7 media. These packages have to be explicitly downloaded into the admin node.
-
-The rpms are available at: 
-1. https://download.opensuse.org/repositories/Cloud:/OpenStack:/Newton:/cisco-apic/SLE_12_SP3/noarch/
-and
-2. https://download.opensuse.org/repositories/Cloud:/OpenStack:/Newton:/cisco-apic/SLE_12_SP3/x86_64/
-
-Download the rpms from both the urls to corresponding folders in /srv/tftpboot/suse-12.2/x86_64/repos/PTF/rpm/ and update the repo by executing createrepo-cloud-ptf on the prompt.
-
-Run zypper refresh on the nodes to update the newly created rpms and make them accessible on the nodes.
-
-
-## Cisco ACI Configurations
+## Cisco ACI Configuration
 The following figure shows a typical deployment topology of SUSE OpenStack Cloud with Cisco ACI. 
 
 ![SOC 7 - ACI Overview](images/cisco_aci/cisco_aci_soc7_overview.png "Cisco ACI with SOC7 - Overview")
@@ -62,7 +49,7 @@ The following figure shows a typical deployment topology of SUSE OpenStack Cloud
 #### Note: To prepare ACI for in-band configuration, we can use Physical Domain and static binding to EPGs created for these networks.
 
 
-Deployment of SUSE OpenStack Cloud 7 with Cisco ACI requires several pre-configurations to be done on the ACI fabric. All configurations can be done through the universal APIC GUI. The typical steps to configure the ACI fabric are listed here.
+Deployment of SUSE OpenStack Cloud 7 with Cisco ACI requires several configuration actions to be taken in advance on the ACI fabric. All configuration can be done through the universal APIC GUI. The typical steps to configure the ACI fabric are listed here.
 
 For more details on working with the APIC, refer to the documentation on [Operating Application Centric Infrastructure](https://www.cisco.com/c/en/us/td/docs/switches/datacenter/aci/apic/sw/1-x/Operating_ACI/guide/b_Cisco_Operating_ACI.html).
 
@@ -85,12 +72,6 @@ Create an AEP and assign the Physical Domain.
 ![Create AEP](images/cisco_aci/aci_create_aep.png)
 
 
-### Application Profile:
-Create the Application profile for deployment (SOC7-2 in the example below).
-
-![Create Application Profile](images/cisco_aci/aci_create_application_profile.png)
-
-
 ### VRF:
 Create a VRF (Virtual Routing and Forwarding).
 
@@ -101,6 +82,12 @@ Create a VRF (Virtual Routing and Forwarding).
 Create Bridge Domains.
 
 ![Create Bridge Domain](images/cisco_aci/aci_create_bd.png)
+
+
+### Application Profile:
+Create the Application profile for deployment (SOC7-2 in the example below).
+
+![Create Application Profile](images/cisco_aci/aci_create_application_profile.png)
 
 
 ### EPG:
@@ -150,7 +137,7 @@ The test solution uses the default L3 Out using the ACI’s internal fabric VRFs
 
 #### Setup a Route Reflector
 
-We need to have a BGP route reflector policy to allow that static route for the L3out to be advertised to other no border leaf nodes in the fabric. The BGP route-reflector policy is used for advertising dynamic routes and static routes to the non-border leaves in the fabric. If you are using any kind of L3out the best practice is to configured the  RR policy using below command on the controller:
+We need to have a BGP route reflector policy to allow that static route for the L3out to be advertised to other no border leaf nodes in the fabric. The BGP route-reflector policy is used for advertising dynamic routes and static routes to the non-border leaves in the fabric. If you are using any kind of L3out the best practice is to configure the  RR policy using below command on the controller:
 
 ```
 apic route-reflector-create --apic-ip <APIC IP> --apic-username admin --apic-password <password> --no-secure
@@ -169,6 +156,18 @@ Please make sure you have pre-existing L3 out (for example Datacenter-Out) and p
 
 In above example Datacenter-Out is name of l3-out on ACI and Datacenter-Out-Epg is the name of EPG. The SNAT pool is secified by `host_pool_cidr`.
 
+
+## Admin Node Preparation
+The SUSE OpenStack cloud Admin node should be prepared before starting out with crowbar and ACI integration. The packages required for ACI integration are not currently part of the SUSE OpenStack Cloud 7 media. These packages have to be explicitly downloaded into the admin node.
+
+The rpms are available at: 
+1. https://download.opensuse.org/repositories/Cloud:/OpenStack:/Newton:/cisco-apic/SLE_12_SP3/noarch/
+and
+2. https://download.opensuse.org/repositories/Cloud:/OpenStack:/Newton:/cisco-apic/SLE_12_SP3/x86_64/
+
+Download the rpms from both the urls to corresponding folders in /srv/tftpboot/suse-12.2/x86_64/repos/PTF/rpm/ and update the repo by executing createrepo-cloud-ptf on the prompt.
+
+Run zypper refresh on the nodes to update the newly created rpms and make them accessible on the nodes.
 
 ## Switch Configurations on the Control and Compute nodes
 The traffic between ACI fabric to the nodes are channeled through VXLAN tunnel attached to the integration bridge. This setup connects the ACI leaf nodes with the compute and controller hosts which are virtual machines in case of the lab solution. Run these commands on the nodes to get the required OVS configurations on the compute and controller nodes as soon as the nodes are up and running. Configuring the Opflex section of the Crowbar (shown in the later section) to use the bridge port created here allows the ACI to recognize the leaf nodes. 
