@@ -1,11 +1,34 @@
 # Cisco ACI - Integration and Deployment with SUSE OpenStack Cloud 7
 
 
-## Introduction and Scope
+# Table of Contents
+### 1. [Introduction and Scope](#introduction)
+### 2. [Prerequisites](#prereq)
+### 3. [SOC 7 Networking](#soc7net)
+### 4. [SOC 7 Test Lab for ACI](#soc7lab)
+### 5. [Admin Node Preparations](#adminprep)
+### 6. [Cisco ACI Fabric Configurations](#aciconfig)
+#### 6.1. [VLAN Pool](#vlanpool) 
+#### 6.2. [Physical Domain](#physdom)
+#### 6.3. [Attachable Entity Profile](#aep)
+#### 6.4. [Application Profile](#appprof)
+#### 6.5. [Virtual Routing and Forwarding](#vrf)
+#### 6.6. [Bridge Domain](#bdomain)
+#### 6.7. [End Point Groups](#epg)
+#### 6.8. [Physical Domain Association](#physassoc)
+#### 6.9. [External Routed Networks](#extnet)
+##### 6.9.1. [Setup a Route Reflector](#routeref)
+##### 6.9.2. [Configure External Connectivity](#extconf)
+### 7. [Switch Configurations on the OpenStack Nodes](#switchconf)
+### 8. [Compute Node Configurations through YaST](#yastconf)
+### 9. [Crowbar Proposal Template for Neutron](#crowbar)
+### 10. [Current Status of SOC 7 Integration with ACI](#soc7stat) 
+
+## 1. Introduction and Scope <a name="introduction"></a>
 This document provides a detailed description of concepts and steps involved with integration of Cisco ACI as a backend SDN solution with SUSE OpenStack Cloud 7. This document does not cover details describing the deployment and administration of SUSE OpenStack Cloud 7 itself which can be obtained from the standard documentation from SOC7. This document also does not provide an in-depth documentation and recommendations for Cisco ACI fabric configuration. The document tries to describe the steps to move from the default OpenvSwitch-based deployment of SOC7 to using Cisco ACI as the ML2 backend. More information regarding specific ACI configurations and best practices can be found in the relevant [APIC](https://www.cisco.com/c/en/us/support/cloud-systems-management/application-policy-infrastructure-controller-apic/tsd-products-support-series-home.html) documents.
 
 
-## Prerequisites
+## 2. Prerequisites <a name="prereq"></a>
 * At least 2 leafs on a Leaf-And-Spine ACI fabric using Cisco Nexus 9000 switches with support for APIC.
 * Integration to be based on ACI Firmware version 2.2(3) and SUSE OpenStack Cloud 7 (Openstack Newton-based)
 * A dedicated host for APIC controller with the required licenses to manage the ACI fabric.
@@ -13,7 +36,7 @@ This document provides a detailed description of concepts and steps involved wit
 * A dedicated node that can be used as Admin node to deploy and configure SUSE OpenStack Cloud (Crowbar installation).
 
 
-## SUSE OpenStack Cloud 7 Networking requirements
+## 3. SUSE OpenStack Cloud 7 Networking requirements <a name="soc7net"></a>
 SOC 7 uses the network architecture as shown in the figure below as the default configuration.
 
 ![SOC 7 Network Architecture](images/cisco_aci/cloud_network_overview.png "SOC 7 Network Overview")
@@ -29,7 +52,7 @@ Once the network settings are updated and crowbar is installed, it wont be possi
 The initial network settings for ACI deployment in the test solution (described below in section 4) is not different from the default settings. 
 
 
-## SOC 7 Lab setup or the Test Solution
+## 4. SOC 7 Test Lab for ACI <a name="soc7lab"></a>
 This section briefly describes the development lab setup used for integration with ACI and here-after will be referred to as the "Test Solution."
 
 All the information provided in this document is based on the configuration done for the test solution implemented in the Cisco ACI lab accessible by SUSE for development and POC purposes. The actual production deployments could follow different architecture and scale. The network architecture of the test lab is as shown in the figure below.
@@ -37,7 +60,20 @@ All the information provided in this document is based on the configuration done
 ![SOC7-ACI Integration Lab Setup](images/cisco_aci/aci_pod_lab_network_diagram.png "ACI Lab POD Network Diagram")
 
 
-## Cisco ACI Configuration
+## 5. Admin Node Preparations <a name="adminprep"></a>
+The SUSE OpenStack cloud Admin node should be prepared before starting out with crowbar and ACI integration. The packages required for ACI integration are not currently part of the SUSE OpenStack Cloud 7 media. These packages have to be explicitly downloaded into the admin node.
+
+The rpms are available at: 
+1. https://download.opensuse.org/repositories/Cloud:/OpenStack:/Newton:/cisco-apic/SLE_12_SP3/noarch/
+and
+2. https://download.opensuse.org/repositories/Cloud:/OpenStack:/Newton:/cisco-apic/SLE_12_SP3/x86_64/
+
+Download the rpms from both the urls to corresponding folders in /srv/tftpboot/suse-12.2/x86_64/repos/PTF/rpm/ and update the repo by running `createrepo-cloud-ptf`.
+
+Run `zypper refresh` on the nodes to be able to access the updated rpms.
+
+
+## 6. Cisco ACI Fabric Configurations <a name="aciconfig"></a>
 The following figure shows a typical deployment topology of SUSE OpenStack Cloud with Cisco ACI. 
 
 ![SOC 7 - ACI Overview](images/cisco_aci/cisco_aci_soc7_overview.png "Cisco ACI with SOC7 - Overview")
@@ -54,49 +90,49 @@ Deployment of SUSE OpenStack Cloud 7 with Cisco ACI requires several configurati
 For more details on working with the APIC, refer to the documentation on [Operating Application Centric Infrastructure](https://www.cisco.com/c/en/us/td/docs/switches/datacenter/aci/apic/sw/1-x/Operating_ACI/guide/b_Cisco_Operating_ACI.html).
 
 
-### VLAN Pool:
+### 6.1. VLAN Pool <a name="vlanpool"></a>
 VLAN Pools define a range of VLAN IDs that will be used by the EPG. Using the GUI, the VLAN pool can be created at Fabric -> Access Policies -> Pools -> VLAN (Actions-> Create VLAN Pool).
 
 ![Create VLAN Pool](images/cisco_aci/aci_create_vlan_pool.png)
 
 
-### Physical Domain:
+### 6.2. Physical Domain <a name="physdom"></a>
 Create a Physical Domain and assign the above VLAN Pool to it.
 
 ![Create Physical Domain](images/cisco_aci/aci_create_physdomain.png)
 
 
-### Attachable Entity Profile
+### 6.3. Attachable Entity Profile <a name="aep"></a>
 Create an AEP and assign the Physical Domain.
 
 ![Create AEP](images/cisco_aci/aci_create_aep.png)
 
 
-### VRF:
-Create a VRF (Virtual Routing and Forwarding).
-
-![Create VRF](images/cisco_aci/aci_create_vrf.png)
-
-
-### Bridge Domain:
-Create Bridge Domains.
-
-![Create Bridge Domain](images/cisco_aci/aci_create_bd.png)
-
-
-### Application Profile:
+### 6.4. Application Profile <a name="appprof"></a>
 Create the Application profile for deployment (SOC7-2 in the example below).
 
 ![Create Application Profile](images/cisco_aci/aci_create_application_profile.png)
 
 
-### EPG:
+### 6.5. Virtual Routing and Forwarding <a name="vrf"></a>
+Create a VRF (Virtual Routing and Forwarding).
+
+![Create VRF](images/cisco_aci/aci_create_vrf.png)
+
+
+### 6.6. Bridge Domain <a name="bdomain"></a>
+Create Bridge Domains.
+
+![Create Bridge Domain](images/cisco_aci/aci_create_bd.png)
+
+
+### 6.7. EPG <a name="epg"></a>
 Deploy Static EPGs (Endpoint Groups) as required.
 
 ![Create EPG](images/cisco_aci/aci_deploy_epg.png)
 
 
-### Physical Domain Association
+### 6.8. Physical Domain Association <a name="physassoc"></a>
 * Associate the Physical Domain created above with the Application Profile.
 
 ![Physical Domain Association](images/cisco_aci/aci_associate_physdomain.png)
@@ -117,11 +153,9 @@ Deploy Static EPGs (Endpoint Groups) as required.
 
 * ACI Tenant - VMM Domain with SOC 7
 
-The test solution with SOC 7 uses the default mode with single_tenant_mode = true. This allows for a single ACI tenant for all openstack tenants which also maps to a single VMM domain. There can be other VMM domains in the ACI tenant along with the openstack tenant. Additional openstack tenants can be identified as separate Application Profiles within the same ACI tenant. The image below shows the list of tenants used in the test solution lab.
+By default, each OpenStack project is reflected as a separate Tenant on the ACI. The image below shows the list of tenants used in the test solution lab.
 
 ![ACI Tenant List](images/cisco_aci/aci_tenant_list.png)
-
-Note: It is possible to change the mode to use a single ACI tenant for each openstack tenant by setting  single_tenant_mode = false. However, this mode is not yet tested with SOC 7 and hence crowbar does not support altering this parameter as of the current implementation. This can be implemented as a change request for SOC 7 but requires suitable lab setup to test the option thoroughly.
 
 * Endpoint Group and Bridge domains with SOC 7
 
@@ -129,13 +163,13 @@ The End Point Group (EPG) along with the Bridge Domain (BD) together represent a
 
 ![EPG and BD with SOC7](images/cisco_aci/aci_soc7_epgs_bd.png)
 
-### External Routed Networks with SOC 7 ACI integration
+### 6.9. External Routed Networks <a name="extnet"></a>
 
 The test solution uses the default L3 Out using the ACI’s internal fabric VRFs linked to the physical interface. The setting in /etc/neutron/neutron.conf for service_plugins lists apic_gbp_l3 (for GBP mode) or cisco_apic_l3 (for ML2 mode) uses the default L3 Out mechanism. The physical interface linked to the ML2 L3 out in the test solution can be seen in the below image:
 
 ![External Routed Network](images/cisco_aci/aci_ml2_l3out.png)
 
-#### Setup a Route Reflector
+#### 6.9.1. Setup a Route Reflector <a name="routeref"></a>
 
 We need to have a BGP route reflector policy to allow that static route for the L3out to be advertised to other no border leaf nodes in the fabric. The BGP route-reflector policy is used for advertising dynamic routes and static routes to the non-border leaves in the fabric. If you are using any kind of L3out the best practice is to configure the  RR policy using below command on the controller:
 
@@ -143,36 +177,22 @@ We need to have a BGP route reflector policy to allow that static route for the 
 apic route-reflector-create --apic-ip <APIC IP> --apic-username admin --apic-password <password> --no-secure
 ```
 
-#### Configure External Connectivity
+#### 6.9.2. Configure External Connectivity <a name="extconf"></a>
 
-Please make sure you have pre-existing L3 out (for example Datacenter-Out) and pre-existing external EPG (say Datacenter-Out-Epg) for it, then on controllers ensure that the plugin configuration includes this info:
+Please make sure you have pre-existing L3 out (for example Datacenter-Out) and pre-existing external EPG (say Datacenter-Out-Epg) for it. 
+
+Note: For the external network from OpenStack to work with the L3Out from the ACI, its necessary to create an external network which has the same name as the L3Out. For e.g: if the name of the L3 Out is Datacenter-Out, the external network should be created as below:
 
 ```
- [apic_external_network:Datacenter-Out]
- preexisting=True
- external_epg=Datacenter-Out-Epg
- host_pool_cidr = 2.101.2.1/24
+neutron net-create Datacenter-Out --router:external --shared
 ```
 
-In above example Datacenter-Out is name of l3-out on ACI and Datacenter-Out-Epg is the name of EPG. The SNAT pool is secified by `host_pool_cidr`.
+(Creation of this external network is buggy with the OpenStack Newton release and hence command line interference is recommended.)
 
-
-## Admin Node Preparation
-The SUSE OpenStack cloud Admin node should be prepared before starting out with crowbar and ACI integration. The packages required for ACI integration are not currently part of the SUSE OpenStack Cloud 7 media. These packages have to be explicitly downloaded into the admin node.
-
-The rpms are available at: 
-1. https://download.opensuse.org/repositories/Cloud:/OpenStack:/Newton:/cisco-apic/SLE_12_SP3/noarch/
-and
-2. https://download.opensuse.org/repositories/Cloud:/OpenStack:/Newton:/cisco-apic/SLE_12_SP3/x86_64/
-
-Download the rpms from both the urls to corresponding folders in /srv/tftpboot/suse-12.2/x86_64/repos/PTF/rpm/ and update the repo by executing createrepo-cloud-ptf on the prompt.
-
-Run zypper refresh on the nodes to update the newly created rpms and make them accessible on the nodes.
-
-## Switch Configurations on the Control and Compute nodes
+## 7. Switch Configurations on the OpenStack Nodes <a name="switchconf"></a>
 The traffic between ACI fabric to the nodes are channeled through VXLAN tunnel attached to the integration bridge. This setup connects the ACI leaf nodes with the compute and controller hosts which are virtual machines in case of the lab solution. Run these commands on the nodes to get the required OVS configurations on the compute and controller nodes as soon as the nodes are up and running. Configuring the Opflex section of the Crowbar (shown in the later section) to use the bridge port created here allows the ACI to recognize the leaf nodes. 
 
-``` bash
+```
     sudo systemctl start openvswitch
 
     sudo systemctl enable openvswitch
@@ -181,12 +201,13 @@ The traffic between ACI fabric to the nodes are channeled through VXLAN tunnel a
 
     sudo ovs-vsctl set bridge br-int protocols=[]
 
-    sudo ovs-vsctl add-port br-int br-int_vxlan0 type=vxlan options:remote_ip=flow -- set Interface br-int_vxlan0 options:key=flow options:dst_port=8472
+    sudo ovs-vsctl add-port br-int br-int_vxlan0 -- set Interface br-int_vxlan0 type=vxlan options:remote_ip=flow options:key=flow options:dst_port=8472
 ```
 
-    The test lab OVS looks like below after the above configuration.
+The test lab OVS looks like below after the above configuration. This result is when we have two compute nodes connected over a tunnel. Other setups could look slightly different. Ensure the br-int_vxlan0 is available.
 
-* Controller Node:
+
+*Controller Node:*
 
 ```
     root@d52-54-00-02-02-01:~ # sudo ovs-vsctl show 
@@ -230,7 +251,7 @@ The traffic between ACI fabric to the nodes are channeled through VXLAN tunnel a
     ovs_version: "2.6.0"
 ```
 
-* Compute Node:
+*Compute Node:*
 
 ```
     root@d52-54-00-02-03-02:~ # ovs-vsctl show
@@ -249,43 +270,43 @@ The traffic between ACI fabric to the nodes are channeled through VXLAN tunnel a
     ovs_version: "2.6.0"
 ```
 
-## Compute Node YaST Configurations
+## 8. Compute Node Configurations through YaST <a name="yastconf"></a>
 A few manual steps are necessary to be configured on the compute nodes before deploying the neutron barclamp.  These steps should be done on the compute node with SSH access to the node.
 
-1. Start Yast on the compute node and select System→ Network Settings as below.
+* Start Yast on the compute node and select System→ Network Settings as below.
 
 ![YaST Network Settings](images/cisco_aci/yast_net_settings.png)
 
-2. Select “Continue” when prompted with the warning below.
+* Select “Continue” when prompted with the warning below.
 
 ![YaST Network Continue](images/cisco_aci/yast_net_continue.png)
 
-3. Select the interface connected to the ACI to Edit
+* Select the interface connected to the ACI to Edit
 
 ![ACI Interface](images/cisco_aci/yast_interface_edit.png)
 
-4. Select the option “No Link and IP Setup” 
+* Select the option “No Link and IP Setup” 
 
 ![No Link Option](images/cisco_aci/yast_aci_interface_nolink.png)
 
-5. In the “General” tab, set the Device Activation setting to “At Boot Time” and MTU to 1600 and click on Next to continue.
+* In the “General” tab, set the Device Activation setting to “At Boot Time” and MTU to 1600 and click on Next to continue.
 
 ![General Settings](images/cisco_aci/yast_general_settings.png)
 
-6. Add a new interface to create a VLAN attached to the ACI interface with the VLAN ID as obtained from the ACI fabric. The example below uses 4093 which is commonly the default VLAN ID for ACI deployments.
+* Add a new interface to create a VLAN attached to the ACI interface with the VLAN ID as obtained from the ACI fabric. The example below uses 4093 which is commonly the default VLAN ID for ACI deployments.
 
 ![Create VLAN](images/cisco_aci/yast_create_vlan.png)
 
-7. Setup DNS server details and suitable domain name and host names.
+* Setup DNS server details and suitable domain name and host names.
 
 ![Setup DNS](images/cisco_aci/yast_hostname_dns.png)
 
-8. Add additional routing and click on “OK” to save the changes and “Quit” to get back to the command prompt.
+* Add additional routing and click on “OK” to save the changes and “Quit” to get back to the command prompt.
 
 ![Add Routing](images/cisco_aci/yast_routing.png)
 
 
-## Crowbar Proposal Template
+## 9. Crowbar Proposal Template <a name="crowbar"></a>
 
 ![Crowbar Neutron Proposal](images/cisco_aci/crowbar_neutron.png)
 
@@ -313,13 +334,16 @@ Select the neutron barclamp in the barclamp list in the Crowbar UI and edit the 
 
         ],
     "networking_plugin": "ml2",
+    // set the mechanism driver to cisco_apic_ml2 or apic_gbp as required
     "ml2_mechanism_drivers": [
         "cisco_apic_ml2"
         ],
+    // The first type driver has to be opflex and the second should be 
+    // the type of encapsulation used for opflex.
     "ml2_type_drivers": [
         "opflex",
-    “vxlan”,
-    “vlan”
+        “vxlan”,
+        “vlan”
         ],
     "ml2_type_drivers_default_provider_network": "opflex",
     "ml2_type_drivers_default_tenant_network": "opflex",
@@ -343,12 +367,27 @@ Select the neutron barclamp in the barclamp list in the Crowbar UI and edit the 
         "system_id": "soc",
         "username": "admin",
         "password": "",
+        "optimized_metadata": true,
+        "optimized_dhcp": true,
+        "vpc_pairs": "<leaf_nodes_for_vpc_pairs>"   // e.g: "101:102"
+        "ext_net": {
+          "name": "<l3out_name>"
+          "preexisting": true,
+          "ext_epg": "<l3out_epg_name>",
+          "nat_enabled": false,          // optional parameter, default=false
+          "host_pool_cidr": "<SNAT IP range in IP/Mask format>"
+        },
         // The information in the below section is specific to a single   
         // ACI fabric or POD and one needs to refer to the ACI Infra 
         // default values for the specific fabric with the exception of
         // the encap_iface which is the name of the port attached to br-int 
         // for vxlan tunneling described in the previous section. 
-        "opflex": {
+        "opflex": [ 
+          {
+            "pod": "",
+            "hosts": [
+                <list_of_hosts_(generally compute nodes) with opflex agent>
+              ]
             "peer_ip": "10.0.0.30", // ACI-INFRA BD subnet IP and port
             "peer_port": 8009,
             "encap": "vxlan",       
@@ -357,26 +396,40 @@ Select the neutron barclamp in the barclamp list in the Crowbar UI and edit the 
                 "uplink_iface": "vlan.4093", // interface on the computes
                 "uplink_vlan": 4093,     // default APIC Infra VLAN ID
                 "remote_ip": "10.0.0.32", // default FTEP IP and port
+                // To Obtain the FTEP IP, login to the APIC Controller node using SSH.
+                // Login to any of the leaf nodes with SSH and run the following command 
+                // to get the IP allocated to lo1023 and note this as remote_ip.
+                // `
+                // leaf_101# show ip int brief | grep lo1023
+                // lo1023      10.0.0.32/32       protocol-up/link-up/admin-up
+                // `
                 "remote_port": 8472
             },
             "vlan": {
                 "encap_iface": ""
             }
-        },
-        // Refer to the lines after this template for the method used to get 
-        // information about the switch ports from the compute nodes.
+          }
+        ],
+        // The values for the switch ports can be obtained from the respective nodes using
+        // lldpctl. Note the VPC pairs if using a Fabric Interconnect. 
         "apic_switches": {
             "101": {
                 "switch_ports": {
                     "52-54-00-02-03-02": {
-                        "switch_port": "1/38"
+                        "switch_port": "<port_numbers/vpc_pairs>"
+                    },
+                    "52-54-00-02-03-04": {
+                        "switch_port": "<port_numbers/vpc_pairs>"
                     }
                 }
             },
             "102": {
                 "switch_ports": {
                     "52-54-00-02-03-01": {
-                        "switch_port": "1/38"
+                        "switch_port": "<port_numbers/vpc_pairs>"
+                    },
+                    "52-54-00-02-03-03": {
+                        "switch_port": "<port_numbers/vpc_pairs>"
                     }
                 }
             }
@@ -539,7 +592,7 @@ The entries for each switch must be obtained by running “lldpctl” on the res
 Click on the Apply button to apply the neutron proposal and verify the ACI artifacts as specified in section 5.
 
 
-## Current Status of SOC7 ACI Integration
+## 10. Current Status of SOC 7 Integration with ACI <a name="soc7stat"></a>
 SOC 7 can be currently used with ML2 and GBP mode with ACI and configured accordingly by setting the suitable driver for “ml2_mechanism_drivers” (“cisco_apic_ml2” and “apic_gbp”).  Please check with us for the right PTF to enable these modes.  
 
 ML2 and GBP modes have been tested with SOC 7 on the Test lab described in section 4. 
