@@ -64,9 +64,9 @@ All the information provided in this document is based on the configuration done
 The SUSE OpenStack cloud Admin node should be prepared before starting out with crowbar and ACI integration. The packages required for ACI integration are not currently part of the SUSE OpenStack Cloud 7 media. These packages have to be explicitly downloaded into the admin node.
 
 The rpms are available at: 
-1. https://download.opensuse.org/repositories/Cloud:/OpenStack:/Newton:/cisco-apic/SLE_12_SP3/noarch/
+1. https://download.opensuse.org/repositories/Cloud:/OpenStack:/Newton:/cisco-apic/SLE_12_SP2/noarch/
 and
-2. https://download.opensuse.org/repositories/Cloud:/OpenStack:/Newton:/cisco-apic/SLE_12_SP3/x86_64/
+2. https://download.opensuse.org/repositories/Cloud:/OpenStack:/Newton:/cisco-apic/SLE_12_SP2/x86_64/
 
 Download the rpms from both the urls to corresponding folders in /srv/tftpboot/suse-12.2/x86_64/repos/PTF/rpm/ and update the repo by running `createrepo-cloud-ptf`.
 
